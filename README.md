@@ -4,12 +4,13 @@
 
 ### 動機與目標
 <!-- 說明為什麼想做這個專題 -->
-這學期我修了電機系所開設的電腦網路導論選修課程，課程中介紹了 ISO/OSI 7層模型，並且提及了 socket 在 vs code 上的實作。藉此機會，我想嘗試在 vs code 用 python 實作 socket，以深入對 transport layer 的理解。
+這個學期，我選修了電機系所開設的電腦網路導論選修課程，課程中介紹了 ISO/OSI 7層模型，並且提及了 socket 的實作。藉此機會，我想嘗試在 vs code 用 python 實作 socket，同時深入對 transport layer 以及資料結構與演算法的理解。
 
 ### 預期功能
 <!-- 列出預計實作的功能 -->
 1. 做出 socket 的基本架構，能夠讓 server 接收到 client 的 message。
 2. 讓 client 與 client 之間能傳送訊息。
+3. 視實作情況新增其他功能
 
 ### 使用技術
 <!-- 使用的語言、框架、工具等 -->
@@ -38,11 +39,11 @@
 
 ### 下一步計畫
 <!-- 接下來要做什麼 -->
-完成 client 之間的訊息交流
+完成 client 之間的訊息交流。
 
 ### 與課程的關聯
 <!-- 到目前為止，你的實作中哪些部分與課程內容有關？關係是什麼？ -->
-對於 socket 之間 message 的傳送，message 的格式需符合一定的 protocol(e.g. data size = 64)，類似資料結構中，資料需要有一定組織的概念。
+對於 socket 之間資料訊息的傳送，格式需符合一定的 protocol(e.g. data size must no bigger than 64)，類似資料結構中，資料需要有一定組織的概念。
 socket 的實作中，讓資料符合特定 protocol 要求的動作也算作一種 algorithm。
 
 ---
