@@ -1,27 +1,57 @@
 import socket
+import threading
+import sys
 
-HEADER = 64 # 每則訊息最多 64 bytes
+HEADER = 64
 PORT = 5050
 FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
-SERVER = "192.168.1.111"
+
+# 這裡可以使用上一題學到的動態獲取方法，此處先用本地測試
+SERVER = "10.139.227.250" 
 ADDR = (SERVER, PORT)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
+def receive_messages():
+    """在背景持續監聽 Server 傳過來的其他 Client 訊息"""
+    while True:
+        try:
+            # 接收來自 Server 轉發的訊息
+            message = client.recv(1024).decode(FORMAT)
+            if message:
+                print(f"\n{message}")
+                print("> ", end="") # 保持輸入提示符號
+            else:
+                break
+        except:
+            print("[ERROR] 連線已中斷。")
+            break
+
 def send(msg):
+    """發送訊息給 Server"""
     message = msg.encode(FORMAT)
     msg_length = len(message)
     send_length = str(msg_length).encode(FORMAT)
-    send_length += b' ' * (HEADER - len(send_length)) # to calculate the actual msg length
+    send_length += b' ' * (HEADER - len(send_length))
     client.send(send_length)
     client.send(message)
-    print(client.recv(2048).decode(FORMAT))
 
-send("Hello World!")
-input()
-send("Hello cat!")
-input()
+# 啟動背景執行緒，專門負責「接別人的訊息」
+receive_thread = threading.Thread(target=receive_messages, daemon=True)
+receive_thread.start()
 
-send(DISCONNECT_MESSAGE)
+print("--- 已成功進入聊天室，請輸入訊息 (輸入 q 離開) ---")
+while True:
+    user_input = input("> ")
+    if user_input.lower() == 'q':
+        send(DISCONNECT_MESSAGE)
+        break
+    if user_input.strip() == "":
+        continue
+    
+    send(user_input)
+
+client.close()
+sys.exit()
