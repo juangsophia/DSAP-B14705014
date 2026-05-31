@@ -1,7 +1,7 @@
 import socket
 import threading
 
-HEADER = 64 # 每則訊息最多 64 bytes
+HEADER = 64
 PORT = 5050
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
@@ -11,22 +11,56 @@ DISCONNECT_MESSAGE = "!DISCONNECT"
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
+# 用來儲存所有連線中的 client 資訊 {socket物件: addr}
+clients = {}
+
+def broadcast(message, current_conn):
+    """將訊息發送給除了發送者以外的所有人"""
+    for client_socket in list(clients.keys()):
+        if client_socket != current_conn:
+            try:
+                # 這裡為了簡化，直接發送訊息內容（實務上也要封裝長度）
+                client_socket.send(message.encode(FORMAT))
+            except:
+                # 預防 client 斷線但沒清掉
+                client_socket.close()
+                if client_socket in clients:
+                    del clients[client_socket]
 
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
+    
+    # 將新連線的 client 加入字典
+    clients[conn] = addr
+    
+    # 廣播給其他人：有人上線了
+    broadcast(f"[系統提示] 使用者 {addr} 已加入聊天室。\n", conn)
 
     connected = True
     while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT) # conn is client socket, waiting for client to send bytes
-        if msg_length: # msg exist
-            msg_length = int(msg_length)
-            msg = conn.recv(msg_length).decode(FORMAT)
-            if msg == DISCONNECT_MESSAGE:
-                connected = False
+        try:
+            msg_length = conn.recv(HEADER).decode(FORMAT)
+            if msg_length:
+                msg_length = int(msg_length)
+                msg = conn.recv(msg_length).decode(FORMAT)
+                
+                if msg == DISCONNECT_MESSAGE:
+                    connected = False
+                    break
 
-            print(f"[{addr}] {msg}")
-            conn.send("Msg received".encode(FORMAT))
+                print(f"[{addr}] {msg}")
+                # 收到 A 的訊息，廣播給所有人
+                broadcast(f"[{addr}]: {msg}", conn)
+        except:
+            # 處理異常斷線
+            break
 
+    # Client 斷線後的清理
+    print(f"[DISCONNECT] {addr} disconnected.")
+    if conn in clients:
+        del clients[conn]
+    conn.close()
+    broadcast(f"[系統提示] 使用者 {addr} 已離開聊天室。\n", conn)
 
 def start():
     server.listen()
@@ -35,9 +69,7 @@ def start():
         conn, addr = server.accept()
         thread = threading.Thread(target=handle_client, args=(conn, addr))
         thread.start()
-        print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
-
+        print(f"[ACTIVE CONNECTIONS] {len(clients) + 1}") # 加上當前這一個
 
 print("[STARTING] server is starting...")
 start()
-
