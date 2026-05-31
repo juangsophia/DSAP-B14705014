@@ -1,0 +1,68 @@
+import socket
+import threading
+
+HEADER = 64
+PORT = 5050
+SERVER = socket.gethostbyname(socket.gethostname())
+ADDR = (SERVER, PORT)
+FORMAT = 'utf-8'
+DISCONNECT_MESSAGE = "!DISCONNECT"
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR)
+
+clients = {}
+
+def broadcast(message, current_conn):
+    """將訊息發送給除了發送者以外的所有人"""
+    # 【關鍵修復】使用 list(clients.keys()) 複製名冊，防止多執行緒同時刪除字典造成的崩潰Bug
+    for client_socket in list(clients.keys()):
+        if client_socket != current_conn:
+            try:
+                client_socket.send(message.encode(FORMAT))
+            except:
+                client_socket.close()
+                if client_socket in clients:
+                    del clients[client_socket]
+
+def handle_client(conn, addr):
+    print(f"[NEW CONNECTION] {addr} connected.")
+    clients[conn] = addr
+    broadcast(f"[系統提示] 使用者 {addr} 已加入聊天室。\n", conn)
+
+    connected = True
+    while connected:
+        try:
+            # 專門為多執行緒設計的兩階段接收演算法
+            msg_length = conn.recv(HEADER).decode(FORMAT)
+            if msg_length:
+                msg_length = int(msg_length)
+                msg = conn.recv(msg_length).decode(FORMAT)
+                
+                if msg == DISCONNECT_MESSAGE:
+                    connected = False
+                    break
+
+                print(f"[{addr}] {msg}")
+                broadcast(f"[{addr}]: {msg}", conn)
+        except:
+            break
+
+    # 清理斷線的 Client
+    print(f"[DISCONNECT] {addr} disconnected.")
+    if conn in clients:
+        del clients[conn]
+    conn.close()
+    broadcast(f"[系統提示] 使用者 {addr} 已離開聊天室。\n", conn)
+
+def start():
+    server.listen()
+    print(f"[LISTENING] Server is listening on {SERVER}")
+    while True:
+        conn, addr = server.accept()
+        thread = threading.Thread(target=handle_client, args=(conn, addr))
+        thread.start()
+        print(f"[ACTIVE CONNECTIONS] 目前在線人數: {len(clients)}")
+
+print("[STARTING] server is starting...")
+start()
